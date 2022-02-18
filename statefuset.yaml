@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: prometheus
+  namespace: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: prometheus # has to match .spec.template.metadata.labels
+  serviceName: "prometheus-service"
+  replicas: 1 # by default is 1
+  template:
+    metadata:
+      labels:
+        app: prometheus # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: prometheus
+        image: prom/prometheus
+        args:
+          - "--config.file=/etc/prometheus/prometheus.yml"
+          - "--storage.tsdb.path=/prometheus/"        
+        ports:
+        - containerPort: 9090
+          name: prometheus
+        volumeMounts:
+          - name: prometheus-config-volume
+            mountPath: /etc/prometheus/
+          - name: prometheus-storage
+            mountPath: /prometheus/
+      volumes:
+        - name: prometheus-config-volume
+          configMap:
+            defaultMode: 420
+            name: prometheus
+
+  volumeClaimTemplates:
+  - metadata:
+      name: prometheus-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "local-path"
+      resources:
+        requests:
+          storage: 200M
